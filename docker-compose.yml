@@ -5,7 +5,7 @@ x-base-config: &base-config
   ports:
     - "11235:11235"  # Gunicorn port
   env_file:
-    - .llm.env       # API keys (create from .llm.env.example)
+    # - .llm.env       # API keys (create from .llm.env.example)
     - .env
   # Uncomment to set default environment variables (will overwrite .llm.env)
   # environment:
@@ -25,7 +25,7 @@ x-base-config: &base-config
     - ALL
   security_opt:
     - no-new-privileges:true
-  pids_limit: 512
+  # pids_limit: 512
   # Read-only root filesystem; only these paths are writable (tmpfs).
   read_only: true
   tmpfs:
