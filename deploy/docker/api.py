@@ -13,7 +13,7 @@ from urllib.parse import unquote
 from fastapi import HTTPException, Request, status
 from fastapi.background import BackgroundTasks
 from fastapi.responses import JSONResponse
-from redis import asyncio as aioredis
+from redis import asyncio as aioredis # type: ignore
 
 from crawl4ai import (
     AsyncWebCrawler,
@@ -178,7 +178,7 @@ async def handle_llm_qa(
             exponential_factor=config["llm"].get("backoff_exponential_factor", 2)
         )
 
-        return response.choices[0].message.content
+        return response.choices[0].message.content # type: ignore
     except LLMProviderNotAllowed as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -238,7 +238,7 @@ async def process_llm_extraction(
                 base_url=_llm["base_url"],
             ),
             instruction=instruction,
-            schema=json.loads(schema) if schema else None,
+            schema=json.loads(schema) if schema else None, # type: ignore
         )
 
         cache_mode = CacheMode.ENABLED if cache == "1" else CacheMode.WRITE_ONLY
@@ -329,14 +329,15 @@ async def handle_markdown_request(
     config: Optional[dict] = None,
     provider: Optional[str] = None,
     temperature: Optional[float] = None,
-    base_url: Optional[str] = None
+    base_url: Optional[str] = None,
+    delay_before_return_html: float = 0.1
 ) -> str:
     """Handle markdown generation requests."""
     crawler = None
     try:
         # Validate provider if using LLM filter
         if filter_type == FilterType.LLM:
-            is_valid, error_msg = validate_llm_provider(config, provider)
+            is_valid, error_msg = validate_llm_provider(config, provider) # type: ignore
             if not is_valid:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -352,7 +353,7 @@ async def handle_markdown_request(
         else:
             # Provider by name only; base_url/api_token are server-derived.
             from llm_broker import resolve_llm
-            _llm = resolve_llm(config, provider)
+            _llm = resolve_llm(config, provider) # type: ignore
             content_filter = {
                 FilterType.FIT: PruningContentFilter(),
                 FilterType.BM25: BM25ContentFilter(user_query=query or ""),
@@ -385,7 +386,8 @@ async def handle_markdown_request(
             config=CrawlerRunConfig(
                 markdown_generator=md_generator,
                 scraping_strategy=LXMLWebScrapingStrategy(),
-                cache_mode=cache_mode
+                cache_mode=cache_mode,
+                delay_before_return_html=delay_before_return_html
             )
         )
 
@@ -411,7 +413,7 @@ async def handle_markdown_request(
         )
     finally:
         if crawler:
-            await release_crawler(crawler)
+            await release_crawler(crawler) # type: ignore
 
 async def handle_llm_request(
     redis: aioredis.Redis,
@@ -458,7 +460,7 @@ async def handle_llm_request(
             schema,
             cache,
             base_url,
-            config,
+            config, # type: ignore
             provider,
             webhook_config,
             temperature,
@@ -671,12 +673,12 @@ async def handle_crawl_request(
 
     try:
         urls = _normalize_and_validate_seeds(urls)
-        browser_config = BrowserConfig.load(browser_config, provenance=Provenance.UNTRUSTED)
-        crawler_config = CrawlerRunConfig.load(crawler_config, provenance=Provenance.UNTRUSTED)
+        browser_config_ = BrowserConfig.load(browser_config, provenance=Provenance.UNTRUSTED)
+        crawler_config_ = CrawlerRunConfig.load(crawler_config, provenance=Provenance.UNTRUSTED)
         from egress_broker import enforce_egress
-        enforce_egress(browser_config)
+        enforce_egress(browser_config_)
         from governor import clamp_deep_crawl
-        clamp_deep_crawl(crawler_config)
+        clamp_deep_crawl(crawler_config_)
 
         dispatcher = MemoryAdaptiveDispatcher(
             memory_threshold_percent=config["crawler"]["memory_threshold_percent"],
@@ -686,7 +688,7 @@ async def handle_crawl_request(
         )
         
         from crawler_pool import get_crawler, release_crawler
-        crawler = await get_crawler(browser_config)
+        crawler = await get_crawler(browser_config_)
         
         # Attach declarative hooks if provided
         hooks_status = {}
@@ -848,7 +850,7 @@ async def handle_crawl_request(
         )
     finally:
         if crawler:
-            await release_crawler(crawler)
+            await release_crawler(crawler) # type: ignore
 
 async def handle_stream_crawl_request(
     urls: List[str],
@@ -865,19 +867,19 @@ async def handle_stream_crawl_request(
         # mirroring handle_crawl_request. The streaming path previously skipped
         # this, leaving /crawl/stream (and /crawl with stream=true) unguarded.
         urls = _normalize_and_validate_seeds(urls)
-        browser_config = BrowserConfig.load(browser_config, provenance=Provenance.UNTRUSTED)
+        browser_config_ = BrowserConfig.load(browser_config, provenance=Provenance.UNTRUSTED)
         # browser_config.verbose = True # Set to False or remove for production stress testing
-        browser_config.verbose = False
+        browser_config_.verbose = False
         from egress_broker import enforce_egress
-        enforce_egress(browser_config)
-        crawler_config = CrawlerRunConfig.load(crawler_config, provenance=Provenance.UNTRUSTED)
+        enforce_egress(browser_config_)
+        crawler_config_ = CrawlerRunConfig.load(crawler_config, provenance=Provenance.UNTRUSTED)
         from governor import clamp_deep_crawl
         clamp_deep_crawl(crawler_config)
-        crawler_config.scraping_strategy = LXMLWebScrapingStrategy()
-        crawler_config.stream = True
+        crawler_config_.scraping_strategy = LXMLWebScrapingStrategy()
+        crawler_config_.stream = True
 
         # Deep crawl streaming supports exactly one start URL
-        if crawler_config.deep_crawl_strategy is not None and len(urls) != 1:
+        if crawler_config_.deep_crawl_strategy is not None and len(urls) != 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -887,7 +889,7 @@ async def handle_stream_crawl_request(
             )
 
         from crawler_pool import get_crawler, release_crawler
-        crawler = await get_crawler(browser_config)
+        crawler = await get_crawler(browser_config_)
 
         # Attach declarative hooks if provided
         if hooks_config:
@@ -897,10 +899,10 @@ async def handle_stream_crawl_request(
 
         # Deep crawl with single URL: use arun() which returns an async generator
         # mirroring the Python library's streaming behavior
-        if crawler_config.deep_crawl_strategy is not None and len(urls) == 1:
+        if crawler_config_.deep_crawl_strategy is not None and len(urls) == 1:
             results_gen = await crawler.arun(
                 urls[0],
-                config=crawler_config,
+                config=crawler_config_,
             )
         else:
             # Default multi-URL streaming via arun_many
@@ -912,29 +914,29 @@ async def handle_stream_crawl_request(
             )
             results_gen = await crawler.arun_many(
                 urls=urls,
-                config=crawler_config,
+                config=crawler_config_,
                 dispatcher=dispatcher
             )
 
-        return crawler, results_gen, hooks_info
+        return crawler, results_gen, hooks_info #type: ignore
 
     except (UntrustedConfigError, HookValidationError) as e:
         if crawler:
-            await release_crawler(crawler)
+            await release_crawler(crawler) # type: ignore
         raise HTTPException(status_code=400, detail=f"Rejected request: {e}")
 
     except HTTPException:
         # Deliberate status (e.g. 400 SSRF "URL blocked") must pass through
         # rather than be genericized to 500 by the handler below.
         if crawler:
-            await release_crawler(crawler)
+            await release_crawler(crawler) #type: ignore
         raise
 
     except Exception as e:
         # Release crawler on setup error (for successful streams,
         # release happens in stream_results finally block)
         if crawler:
-            await release_crawler(crawler)
+            await release_crawler(crawler) # type: ignore
         logger.error(f"Stream crawl error: {str(e)}", exc_info=True)
         # Raising HTTPException here will prevent streaming response
         raise HTTPException(

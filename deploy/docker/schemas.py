@@ -72,6 +72,7 @@ class MarkdownRequest(BaseModel):
     temperature: Optional[float] = Field(None, description="LLM temperature override (0.0-2.0)")
     # base_url removed: a request-supplied LLM endpoint was a credential-exfil
     # vector. The endpoint is derived server-side from the provider name.
+    delay: float = Field(0.1, description="Seconds to wait before returing HTML for JS elements to be loaded")
 
 
 class RawCode(BaseModel):

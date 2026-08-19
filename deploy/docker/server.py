@@ -587,7 +587,8 @@ async def get_markdown(
     # the LLM endpoint is server-derived from the provider name only.
     markdown = await handle_markdown_request(
         body.url, body.f, body.q, body.c, config, body.provider,
-        body.temperature
+        body.temperature,
+        delay_before_return_html=body.delay
     )
     return JSONResponse({
         "url": body.url,
