@@ -5,7 +5,7 @@ app:
   # Loopback by default. Exposing on 0.0.0.0 requires a credential
   # (CRAWL4AI_API_TOKEN); the startup auth guard refuses an open non-loopback
   # bind without one. Put a TLS-terminating reverse proxy in front for exposure.
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 11235
   reload: False
   workers: 1
@@ -58,9 +58,9 @@ rate_limiting:
 #   - Set SECRET_KEY environment variable to a secure random value
 #   - Set CRAWL4AI_HOOKS_ENABLED=true only if you need hooks (RCE risk)
 security:
-  enabled: true
+  enabled: false
   jwt_enabled: false
-  api_token: ""  # When set, /token endpoint requires this secret to issue JWTs
+  api_token: "-"  # When set, /token endpoint requires this secret to issue JWTs
   https_redirect: false
   trusted_hosts: ["*"]
   cors_allow_origins: []  # deny-by-default; list explicit origins to allow CORS

@@ -6,6 +6,7 @@ x-base-config: &base-config
     - "11235:11235"  # Gunicorn port
   env_file:
     - .llm.env       # API keys (create from .llm.env.example)
+    - .env
   # Uncomment to set default environment variables (will overwrite .llm.env)
   # environment:
   #   - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -54,7 +55,7 @@ services:
   crawl4ai:
     # 1. Default: Pull multi-platform test image from Docker Hub
     # 2. Override with local image via: IMAGE=local-test docker compose up
-    image: ${IMAGE:-unclecode/crawl4ai:${TAG:-latest}}
+    image: crawl4ai-local:latest
     
     # Local build config (used with --build)
     build:

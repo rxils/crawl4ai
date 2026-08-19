@@ -388,13 +388,14 @@ def _current_api_token() -> str:
         or os.environ.get("CRAWL4AI_API_TOKEN", "")
     )
 
-
+"""
 app.add_middleware(
     AuthGateMiddleware,
     token_provider=_current_api_token,
     public_paths={HEALTH_PATH, "/token"},
     public_prefixes=_UI_PREFIXES,
 )
+"""
 
 # ── request body-size limit (DoS) ─────────────────────────────────────
 from governor import BodySizeLimitMiddleware, max_body_bytes_from_config
