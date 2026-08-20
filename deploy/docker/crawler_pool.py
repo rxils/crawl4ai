@@ -3,6 +3,8 @@ import asyncio, json, hashlib, time
 from contextlib import suppress
 from typing import Dict, Optional
 from crawl4ai import AsyncWebCrawler, BrowserConfig
+from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
+from crawl4ai.browser_adapter import UndetectedAdapter
 from utils import load_config, get_container_memory_percent
 import logging
 
@@ -110,7 +112,14 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
 
         # Create new in cold pool
         logger.info(f"🆕 Creating new browser in cold pool (sig={sig[:8]}, mem={mem_pct:.1f}%)")
-        crawler = AsyncWebCrawler(config=cfg, thread_safe=False)
+
+        undetected_adapter = UndetectedAdapter()
+        crawler_strategy = AsyncPlaywrightCrawlerStrategy(
+            browser_config=cfg,
+            browser_adapter=undetected_adapter
+        )
+
+        crawler = AsyncWebCrawler(config=cfg, crawler_strategy=crawler_strategy, thread_safe=False)
         await crawler.start()
         crawler.active_requests = 1
         COLD_POOL[sig] = crawler
